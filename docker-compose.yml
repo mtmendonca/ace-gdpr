@@ -1,0 +1,33 @@
+version: '2.4'
+services:
+  db:
+    image: postgres:11
+    ports: 
+      - 5432:5432
+    volumes:
+      - ./pg-data:/var/lib/postgresql/data
+  app:
+    depends_on:
+      - db
+    build:
+      context: .
+    environment:
+      NODE_ENV:
+      DATABASE_URL:
+      DB_DIALECT:
+      PGUSER:
+      PGPASSWORD:
+      PGHOST:
+      PGPORT:
+      PGDATABASE:
+      TZ:
+      CLIENT_KEY_1:
+      CLIENT_INFO_KEY_1:
+      CLIENT_INFO_SHARED_SECRET_1:
+      CLIENT_INFO_BASE_URL_1:
+      CLIENT_KEY_2:
+      CLIENT_INFO_KEY_2:
+      CLIENT_INFO_SHARED_SECRET_2:
+      CLIENT_INFO_BASE_URL_2:
+    volumes:
+      - .:/home/app
