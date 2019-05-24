@@ -1,6 +1,6 @@
 {
   "name": "ace-gdpr",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "GDPR compiance helper for atlas-connect-express applications",
   "main": "./lib/index.js",
   "scripts": {
@@ -30,7 +30,8 @@
   "keywords": [
     "atlassian-connect-express",
     "gdpr",
-    "node"
+    "node",
+    "jexo"
   ],
   "author": "Marcelo Mendonca <mendonca2709@gmail.com>",
   "license": "MIT",
