@@ -1,6 +1,6 @@
 # ace-gdpr
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT) [![Build Status](https://travis-ci.org/mtmendonca/ace-gdpr.svg?branch=master)](https://travis-ci.org/mtmendonca/ace-gdpr)
 
 **Get GDPR updates for your [Atlas-Connect-Express](https://bitbucket.org/atlassian/atlassian-connect-express/src) application**
 
