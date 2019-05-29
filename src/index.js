@@ -26,9 +26,7 @@ import {
   udpateReportSettings
 } from './repository';
 
-import {
-  DEFAULT_CONFIG, REPORT_ACCOUNTS_METHOD, REPORT_ACCOUNTS_PATH, RETRY
-} from './config';
+import { DEFAULT_CONFIG, RETRY } from './config';
 
 export function getDaysFromCycle(cycle: string): ?number {
   if (typeof cycle === 'string') {
@@ -103,14 +101,18 @@ export async function getUserAccountBatches(clientKey: string, config: Config): 
   return breakIntoChunks(userAccounts, 90);
 }
 
-export async function tryPoll(url: string, token: string, userAccounts: Array<?UserAccount>): Promise<PollResult> {
+export async function tryPoll(
+  reportAccountsMethod: string,
+  clientJiraInstanceEndpoint: string,
+  reportAccountsPath: string,
+  token: string,
+  userAccounts: Array<?UserAccount>
+): Promise<PollResult> {
   try {
-    const {
-      statusCode,
-      body,
-      headers
-    }: { statusCode: number, headers: Set<string>, body: Object } = await request.post({
-      url: `${url}${REPORT_ACCOUNTS_PATH}`,
+    const { statusCode, body, headers }: { statusCode: number, headers: Set<string>, body: Object } = await request[
+      reportAccountsMethod
+    ]({
+      url: `${clientJiraInstanceEndpoint}${reportAccountsPath}`,
       headers: {
         Accept: 'application/json',
         'Content-Type': 'application/json',
@@ -143,17 +145,28 @@ export async function tryPoll(url: string, token: string, userAccounts: Array<?U
   }
 }
 
-export async function poll(userAccounts: Array<?UserAccount>, clientKey: string): Promise<?JiraPollResponse> {
+export async function poll(
+  userAccounts: Array<?UserAccount>,
+  clientKey: string,
+  { reportAccountsMethod, reportAccountsPath }: Config
+): Promise<?JiraPollResponse> {
   let responseData;
   const clientInfo = await findClientInfo(clientKey);
 
   if (clientInfo) {
-    const { secret, url, key: issuer } = clientInfo;
+    const { secret, url: clientJiraInstanceEndpoint, key: issuer } = clientInfo;
 
-    const token = getToken(REPORT_ACCOUNTS_METHOD, REPORT_ACCOUNTS_PATH, issuer, secret);
+    const token = getToken(reportAccountsMethod, reportAccountsPath, issuer, secret);
 
     do {
-      const result = await tryPoll(url, token, userAccounts);
+      const result = await tryPoll(
+        reportAccountsMethod,
+        clientJiraInstanceEndpoint,
+        reportAccountsPath,
+        token,
+        userAccounts
+      );
+
       if (result) {
         const { data, statusCode, retryAfter } = result;
         responseData = data;
@@ -182,7 +195,7 @@ export async function getClientUpdates(clientKey: string, config: Config): Promi
   for (let n = 0; n <= userAccountBatches.length; n += 1) {
     const batch = userAccountBatches[n];
     if (batch) {
-      const result = await poll(batch, clientKey);
+      const result = await poll(batch, clientKey, config);
       if (result) {
         const newCycle = result.newCyclePeriod || '';
         const accounts = result.accounts || [];
@@ -216,8 +229,12 @@ export function compileResult(clientUpdates: Array<ClientUpdates>): CompiledResu
   );
 }
 
+export function getConfig(userConfig: Object): Config {
+  return defaultsDeep(userConfig, DEFAULT_CONFIG);
+}
+
 export default async function getUpdates(userConfig: ?Object = {}): Promise<CompiledResults> {
-  const config: Config = defaultsDeep(userConfig, DEFAULT_CONFIG);
+  const config = getConfig(userConfig);
 
   await ensureReportsTableExists(config);
 

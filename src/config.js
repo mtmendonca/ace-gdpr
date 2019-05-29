@@ -3,11 +3,10 @@ import type { Config } from './types';
 
 export const RETRY = 429;
 
-export const REPORT_ACCOUNTS_METHOD = 'post';
-export const REPORT_ACCOUNTS_PATH = '/rest/atlassian-connect/latest/report-accounts';
-
 export const DEFAULT_CONFIG: Config = {
   logger: console,
+  reportAccountsMethod: 'post',
+  reportAccountsPath: '/rest/atlassian-connect/latest/report-accounts',
   databaseConfig: {
     connection: {
       host: process.env.PGHOST || 'db',

@@ -23,6 +23,8 @@ export type DatabaseConfig = {
 };
 
 export type Config = {
+  reportAccountsPath: string,
+  reportAccountsMethod: string,
   logger: {
     +log: Function,
     +warn: Function,

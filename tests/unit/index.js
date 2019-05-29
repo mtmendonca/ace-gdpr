@@ -18,14 +18,19 @@ import getUpdates, {
   poll,
   getClientKeys,
   getClientUpdates,
-  compileResult
+  compileResult,
+  getConfig
 } from '../../src';
+
+import { DEFAULT_CONFIG } from '../../src/config';
 
 use(chaiAsPromised);
 use(sinonChai);
 
 const sandbox = createSandbox();
 const mockConfig = {
+  reportAccountsMethod: 'post',
+  reportAccountsPath: '/path/to/jira/api/resource',
   logger: console,
   databaseConfig: {
     users: {}
@@ -99,6 +104,7 @@ describe('index.js', () => {
     let fromMethodAndUrlStub;
     let createQueryStringHashStub;
     let encodeStub;
+
     beforeEach(() => {
       fromMethodAndUrlStub = sandbox.stub(atlassianJwt, 'fromMethodAndUrl').returns(mockedRequest);
       createQueryStringHashStub = sandbox.stub(atlassianJwt, 'createQueryStringHash').returns(mockedQueryStringHash);
@@ -226,7 +232,7 @@ describe('index.js', () => {
         { accountId: 'foo', udpatedAt: new Date(), clientKey: 'bar' }
       ];
 
-      await tryPoll('my-url', 'my-token', userAccounts);
+      await tryPoll('post', 'my-url', '/rest/atlassian-connect/latest/report-accounts', 'my-token', userAccounts);
       const { url, headers, json } = postStub.getCalls()[0].args[0];
 
       expect(url).to.be.equals('my-url/rest/atlassian-connect/latest/report-accounts');
@@ -245,7 +251,13 @@ describe('index.js', () => {
       ];
 
       postStub.returns({ headers: { 'cycle-period': '20 Days' }, statusCode: 200, body: { accounts: [] } });
-      const { statusCode, data } = await tryPoll('my-url', 'my-token', userAccounts);
+      const { statusCode, data } = await tryPoll(
+        'post',
+        'my-url',
+        '/rest/atlassian-connect/latest/report-accounts',
+        'my-token',
+        userAccounts
+      );
 
       expect(statusCode).to.be.equals(200);
       expect(data).to.be.eql({ accounts: [], newCyclePeriod: '20 Days' });
@@ -262,7 +274,13 @@ describe('index.js', () => {
         statusCode: 204,
         body: { accounts: [{ accountId: 'account-1', status: 'closed' }] }
       });
-      const { statusCode, data } = await tryPoll('my-url', 'my-token', userAccounts);
+      const { statusCode, data } = await tryPoll(
+        'post',
+        'my-url',
+        '/rest/atlassian-connect/latest/report-accounts',
+        'my-token',
+        userAccounts
+      );
 
       expect(statusCode).to.be.equals(204);
       expect(data).to.be.eql({ accounts: [{ accountId: 'account-1', status: 'closed' }], newCyclePeriod: '21 Days' });
@@ -275,7 +293,13 @@ describe('index.js', () => {
       ];
 
       postStub.throws({ response: { headers: { 'retry-after': 10 } }, statusCode: 429 });
-      const { statusCode, retryAfter } = await tryPoll('my-url', 'my-token', userAccounts);
+      const { statusCode, retryAfter } = await tryPoll(
+        'post',
+        'my-url',
+        '/rest/atlassian-connect/latest/report-accounts',
+        'my-token',
+        userAccounts
+      );
       expect(statusCode).to.equals(429);
       expect(retryAfter).to.equals(10);
     });
@@ -287,7 +311,9 @@ describe('index.js', () => {
       ];
 
       postStub.throws({ response: { headers: { 'retry-after': 10 } }, statusCode: 500 });
-      return expect(tryPoll('my-url', 'my-token', userAccounts)).to.eventually.be.rejected;
+      return expect(
+        tryPoll('post', 'my-url', '/rest/atlassian-connect/latest/report-accounts', 'my-token', userAccounts)
+      ).to.eventually.be.rejected;
     });
 
     it('throws if the request fails with 404', async () => {
@@ -297,7 +323,9 @@ describe('index.js', () => {
       ];
 
       postStub.throws({ response: { headers: { 'retry-after': 10 } }, statusCode: 404 });
-      return expect(tryPoll('my-url', 'my-token', userAccounts)).to.eventually.be.rejected;
+      return expect(
+        tryPoll('post', 'my-url', '/rest/atlassian-connect/latest/report-accounts', 'my-token', userAccounts)
+      ).to.eventually.be.rejected;
     });
 
     it('throws if the request fails with 401', async () => {
@@ -307,20 +335,22 @@ describe('index.js', () => {
       ];
 
       postStub.throws({ response: { headers: { 'retry-after': 10 } }, statusCode: 401 });
-      return expect(tryPoll('my-url', 'my-token', userAccounts)).to.eventually.be.rejected;
+      return expect(
+        tryPoll('post', 'my-url', '/rest/atlassian-connect/latest/report-accounts', 'my-token', userAccounts)
+      ).to.eventually.be.rejected;
     });
   });
 
   describe('poll', () => {
     let postStub;
+    let getStub;
 
     beforeEach(() => {
-      sandbox
-        .stub(repository, 'findClientInfo')
-        .resolves([{ clientKey: 'client-key-1' }, { clientKey: 'client-key-2' }]);
+      sandbox.stub(repository, 'findClientInfo').resolves({ clientKey: 'client-key-1', url: 'client-url' });
       sandbox.stub(atlassianJwt, 'fromMethodAndUrl').returns({});
       sandbox.stub(atlassianJwt, 'createQueryStringHash').returns('my-qsh');
       sandbox.stub(atlassianJwt, 'encode').returns('my-token');
+      getStub = sandbox.stub(request, 'get').resolves({ statusCode: 200, headers: {}, body: {} });
       postStub = sandbox
         .stub(request, 'post')
         .onFirstCall()
@@ -333,48 +363,63 @@ describe('index.js', () => {
     });
 
     it('calls jira api 2x if the first call returns a retry-after header and status code 429', async () => {
-      await poll('my-url', 'my-token', []);
+      await poll([], 'client-key', mockConfig);
       expect(postStub.getCalls().length).to.be.equals(2);
     });
 
     it('calls jira api 1x if the first call returns 200', async () => {
       postStub.reset();
       postStub.resolves({ statusCode: 200, headers: {}, body: {} });
-      await poll('my-url', 'my-token', []);
+      await poll([], 'client-key', mockConfig);
       expect(postStub.getCalls().length).to.be.equals(1);
     });
 
     it('calls jira api 1x if the first call returns 204', async () => {
       postStub.reset();
       postStub.resolves({ statusCode: 204, headers: {}, body: {} });
-      await poll('my-url', 'my-token', []);
+      await poll([], 'client-key', mockConfig);
       expect(postStub.getCalls().length).to.be.equals(1);
     });
 
     it('returns an empty array if api call returns 204 and undefined body', async () => {
       postStub.reset();
       postStub.resolves({ statusCode: 204, headers: {}, body: undefined });
-      const result = await poll('my-url', 'my-token', []);
+      const result = await poll([], 'client-key', mockConfig);
       expect(result).to.be.eql({ accounts: [] });
     });
 
     it('returns an empty array if api call returns 204 and empty object body', async () => {
       postStub.reset();
       postStub.resolves({ statusCode: 204, headers: {}, body: {} });
-      const result = await poll('my-url', 'my-token', []);
+      const result = await poll([], 'client-key', mockConfig);
       expect(result).to.be.eql({ accounts: [] });
     });
 
     it('throws jira api rejects with 400', async () => {
       postStub.reset();
       postStub.rejects({ statusCode: 400, headers: {}, body: {} });
-      return expect(poll('my-url', 'my-token', [])).to.eventually.be.rejected;
+      return expect(poll([], 'client-key', mockConfig)).to.eventually.be.rejected;
     });
 
     it('throws jira api rejects with 500', async () => {
       postStub.reset();
       postStub.rejects({ statusCode: 500, headers: {}, body: {} });
-      return expect(poll('my-url', 'my-token', [])).to.eventually.be.rejected;
+      return expect(poll([], 'client-key', mockConfig)).to.eventually.be.rejected;
+    });
+
+    it('calls jira api with provided path and method', async () => {
+      postStub.reset();
+      postStub.resolves(true);
+      getStub.reset();
+      getStub.resolves(true);
+
+      await poll([], 'client-key', { reportAccountsMethod: 'post', reportAccountsPath: '/path/to/post/resource' });
+      await poll([], 'client-key', { reportAccountsMethod: 'get', reportAccountsPath: '/path/to/get/resource' });
+
+      expect(postStub).to.have.been.calledWithMatch({ url: 'client-url/path/to/post/resource' }).and.to.have.been
+        .calledOnce;
+      expect(getStub).to.have.been.calledWithMatch({ url: 'client-url/path/to/get/resource' }).and.to.have.been
+        .calledOnce;
     });
   });
 
@@ -475,6 +520,48 @@ describe('index.js', () => {
         closed: ['account-2', 'account-4'],
         cycle: '25 Days'
       });
+    });
+  });
+
+  describe('getConfig', () => {
+    it('returns default config if empty object is given', () => {
+      const config = getConfig({});
+      expect(config).to.be.eql(DEFAULT_CONFIG);
+    });
+
+    it('returns default config if no parameter is given', () => {
+      const config = getConfig();
+      expect(config).to.be.eql(DEFAULT_CONFIG);
+    });
+
+    it('overrides all default values', () => {
+      const userConfig = {
+        logger: () => {},
+        reportAccountsMethod: 'custom-method',
+        reportAccountsPath: 'custom-path',
+        databaseConfig: {
+          connection: {
+            host: 'custom-host',
+            user: 'custom-user',
+            password: 'custom-passwd',
+            port: 'custom-port',
+            database: 'custom-database'
+          },
+          users: {
+            tableName: 'custom-users-table',
+            columns: {
+              updatedAt: 'custom-updated-at',
+              userAccountId: 'custom-user-account-id',
+              clientKey: 'custom-client-key'
+            }
+          }
+        },
+        forceExecution: true
+      };
+
+      const config = getConfig(userConfig);
+
+      expect(config).to.be.eql(userConfig);
     });
   });
 
