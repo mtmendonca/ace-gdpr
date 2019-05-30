@@ -1,7 +1,7 @@
 {
   "name": "ace-gdpr",
-  "version": "1.0.2",
-  "description": "GDPR compiance helper for atlas-connect-express applications",
+  "version": "1.0.3",
+  "description": "GDPR compliance helper for atlas-connect-express applications",
   "main": "./lib/index.js",
   "scripts": {
     "dev": "sleep 15 && npm run db migrate:latest && nodemon --watch . --ext js --exec \"DEBUG=true babel-node ./src/entrypoint.js\"",
