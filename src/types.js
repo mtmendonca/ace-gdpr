@@ -72,6 +72,13 @@ export type JiraPollResponse = {
   newCyclePeriod?: string
 };
 
+export type JiraPollError = {
+  name: string,
+  statusCode: number,
+  message: string,
+  response: { headers: Set<string> }
+};
+
 export type PollResult = {
   statusCode: number,
   retryAfter?: number,

@@ -2,6 +2,8 @@
 import type { Config } from './types';
 
 export const RETRY = 429;
+export const UNAUTHORIZED = 401;
+export const FORBIDDEN = 403;
 
 export const DEFAULT_CONFIG: Config = {
   logger: console,

@@ -15,7 +15,8 @@ import type {
   PollResult,
   JiraPollResponse,
   ClientUpdates,
-  CompiledResults
+  CompiledResults,
+  JiraPollError
 } from './types';
 import {
   ensureReportsTableExists,
@@ -26,7 +27,9 @@ import {
   udpateReportSettings
 } from './repository';
 
-import { DEFAULT_CONFIG, RETRY } from './config';
+import {
+  DEFAULT_CONFIG, RETRY, UNAUTHORIZED, FORBIDDEN
+} from './config';
 
 export function getDaysFromCycle(cycle: string): ?number {
   if (typeof cycle === 'string') {
@@ -135,13 +138,13 @@ export async function tryPoll(
     const {
       statusCode,
       response: { headers }
-    }: { statusCode: number, response: { headers: Set<string> } } = error;
+    }: JiraPollError = error;
 
     if (statusCode === RETRY) {
       return { statusCode, retryAfter: parseInt(headers['retry-after'], 10), data: { accounts: [] } };
     }
 
-    throw new Error(error);
+    throw error;
   }
 }
 
@@ -252,9 +255,19 @@ export default async function getUpdates(userConfig: ?Object = {}): Promise<Comp
     for (let n = 0; n < clientKeys.length; n += 1) {
       const clientKey = clientKeys[n];
       if (clientKey) {
-        logger.log(`Getting user account info for client: ${clientKey}`);
-        const clientAccounts = await getClientUpdates(clientKey, config);
-        clientResults.push(clientAccounts);
+        try {
+          logger.log(`Getting user account info for client: ${clientKey}`);
+          const clientAccounts = await getClientUpdates(clientKey, config);
+          clientResults.push(clientAccounts);
+        } catch (error) {
+          if (error.statusCode === UNAUTHORIZED || error.statusCode === FORBIDDEN) {
+            config.logger.warn(
+              `Unable to poll updates for client ${clientKey} due to authorization issues (${error.statusCode}).`
+            );
+          } else {
+            throw error;
+          }
+        }
       }
     }
   }

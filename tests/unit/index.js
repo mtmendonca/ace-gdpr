@@ -632,6 +632,62 @@ describe('index.js', () => {
       return expect(getUpdates({})).to.eventually.be.rejected;
     });
 
+    it('throws if tryPoll throws 404', () => {
+      ensureReportsTableExistsStub.resolves();
+      findOrInsertSettingsStub.resolves({ cycle: '2 Days', lastReportedAt: addDays(new Date(), -1) });
+      findClientKeysStub.resolves([{ clientKey: 'client-key' }]);
+      postStub.rejects({ statusCode: 404, response: { headers: [] } });
+
+      return expect(getUpdates({})).to.eventually.be.rejected;
+    });
+
+    it('throws if tryPoll throws 500', () => {
+      ensureReportsTableExistsStub.resolves();
+      findOrInsertSettingsStub.resolves({ cycle: '2 Days', lastReportedAt: addDays(new Date(), -1) });
+      findClientKeysStub.resolves([{ clientKey: 'client-key' }]);
+      postStub.rejects({ statusCode: 500, response: { headers: [] } });
+
+      return expect(getUpdates({})).to.eventually.be.rejected;
+    });
+
+    it('does not throw if tryPoll throws 401', () => {
+      ensureReportsTableExistsStub.resolves();
+      findOrInsertSettingsStub.resolves({ cycle: '2 Days', lastReportedAt: addDays(new Date(), -1) });
+      findClientKeysStub.resolves([{ clientKey: 'client-key' }]);
+      postStub.rejects({ statusCode: 401, response: { headers: [] } });
+
+      return expect(getUpdates({})).to.eventually.be.fulfilled;
+    });
+
+    it('does not throw if tryPoll throws 403', () => {
+      ensureReportsTableExistsStub.resolves();
+      findOrInsertSettingsStub.resolves({ cycle: '2 Days', lastReportedAt: addDays(new Date(), -1) });
+      findClientKeysStub.resolves([{ clientKey: 'client-key' }]);
+      postStub.rejects({ statusCode: 403, response: { headers: [] } });
+
+      return expect(getUpdates({})).to.eventually.be.fulfilled;
+    });
+
+    it('logs warning if tryPoll throws 403 or 401', async () => {
+      const logger = { warn: sandbox.stub() };
+      ensureReportsTableExistsStub.resolves();
+      findOrInsertSettingsStub.resolves({ cycle: '2 Days', lastReportedAt: addDays(new Date(), -1) });
+      findClientKeysStub.resolves([{ clientKey: 'client-key' }]);
+      postStub
+        .onCall(0)
+        .rejects({ statusCode: 403, response: { headers: [] } })
+        .onCall(1)
+        .rejects({ statusCode: 401, response: { headers: [] } })
+        .onCall(2)
+        .resolves({ statusCode: 200, response: { headers: [] } });
+
+      await getUpdates({ logger });
+      await getUpdates({ logger });
+      await getUpdates({ logger });
+
+      expect(logger.warn).to.have.been.calledTwice;
+    });
+
     it('does not get client keys if shouldSendReport returns false', async () => {
       ensureReportsTableExistsStub.resolves();
       findOrInsertSettingsStub.resolves({ cycle: '25 Days', lastReportedAt: new Date() });

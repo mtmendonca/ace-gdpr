@@ -38,12 +38,12 @@ describe('integration tests', () => {
   });
 
   describe('findOrInsertSettings', () => {
-    it('inserts 15 day cycle and last reported date yesterday if table is empty', async () => {
+    it('inserts 15 day cycle and last reported date 14 days ago if table is empty', async () => {
       await ensureReportsTableExists(DEFAULT_CONFIG);
       const { lastReportedAt, cycle } = await findOrInsertSettings();
 
       expect(cycle).to.be.equals('15 Days');
-      expect(differenceInDays(addDays(new Date(), -1), lastReportedAt)).to.be.equals(0);
+      expect(differenceInDays(addDays(new Date(), -14), lastReportedAt)).to.be.equals(0);
     });
 
     it('returns settings if they exist', async () => {
