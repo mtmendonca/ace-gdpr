@@ -28,13 +28,7 @@ CREATE TABLE IF NOT EXISTS ace_gdpr_settings (
 
 ALTER TABLE ace_gdpr_settings OWNER TO ${user};
 
-CREATE SEQUENCE IF NOT EXISTS ace_gdpr_settings_id_seq
-    AS integer
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
+CREATE SEQUENCE IF NOT EXISTS ace_gdpr_settings_id_seq;
 
 ALTER TABLE ace_gdpr_settings_id_seq OWNER TO ${user};
 
@@ -52,7 +46,7 @@ export async function findOrInsertSettings(): Promise<ReportSettings> {
     return rows[0];
   }
   // insert data into empty table
-  const lastReportedAt = addDays(new Date(), -1);
+  const lastReportedAt = addDays(new Date(), -14);
   const cycle = '15 Days';
   await queryRows('INSERT INTO ace_gdpr_settings(last_reported_at, cycle) VALUES($1, $2)', [
     lastReportedAt.toISOString(),
