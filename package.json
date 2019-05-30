@@ -1,6 +1,6 @@
 {
   "name": "ace-gdpr",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "GDPR compiance helper for atlas-connect-express applications",
   "main": "./lib/index.js",
   "scripts": {
