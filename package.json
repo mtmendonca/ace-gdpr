@@ -70,7 +70,7 @@
     "eslint-plugin-jsx-a11y": "^6.2.1",
     "eslint-plugin-react": "^7.13.0",
     "flow-bin": "^0.98.1",
-    "knex": "^0.16.5",
+    "knex": "^0.20.1",
     "mocha": "^6.1.4",
     "nodemon": "^1.19.0",
     "nyc": "^14.1.1",
