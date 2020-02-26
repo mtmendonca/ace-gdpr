@@ -1,7 +1,6 @@
 language: node_js
 env:
-  - PGPORT=5435
-  - POSTGRES_PASSWORD=passwd
+  - PGPORT=5435 POSTGRES_PASSWORD=passwd
 before_install:
   - docker-compose down
 node_js:
