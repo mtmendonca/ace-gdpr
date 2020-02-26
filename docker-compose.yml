@@ -6,6 +6,8 @@ services:
       - ${PGPORT}:5432
     volumes:
       - ./pg-data:/var/lib/postgresql/data
+    environment: 
+      POSTGRES_PASSWORD:
   app:
     depends_on:
       - db

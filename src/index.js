@@ -186,7 +186,7 @@ export async function poll(
 
 export async function getClientKeys(config: Config): Promise<Array<?string>> {
   const result = await findClientKeys(config.databaseConfig.users);
-  const clientKeyList = result.map(row => row && row.clientKey).filter(n => !!n);
+  const clientKeyList = result.map((row) => row && row.clientKey).filter((n) => !!n);
   return clientKeyList;
 }
 
